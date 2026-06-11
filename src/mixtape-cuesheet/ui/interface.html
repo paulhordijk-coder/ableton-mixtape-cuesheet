@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mixtape Cue Sheet Generator</title>
+  <style>
+    /* Ableton Live-style Dark Design System */
+    :root {
+      --bg-app: #202020;
+      --bg-panel: #2b2b2b;
+      --bg-control: #383838;
+      --bg-input: #1b1b1b;
+      --border-color: #1a1a1a;
+      
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #5e666e;
+      
+      --accent-color: #fd9a00; /* Ableton Orange */
+      --accent-color-hover: #ffaa22;
+      --accent-color-active: #dd7a00;
+      
+      --success-color: #00ff88;
+      --error-color: #ff4444;
+      --warning-color: #ffaa00;
+      
+      --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      font-family: var(--font-stack);
+      font-size: 12px;
+      line-height: 1.4;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-app);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-control);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* Layout Elements */
+    header {
+      background-color: var(--bg-panel);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--success-color);
+      box-shadow: 0 0 6px var(--success-color);
+    }
+
+    main {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Views container */
+    .view-card {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 12px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Form fields */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    input[type="text"], select {
+      background-color: var(--bg-input);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 3px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent-color);
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    input[type="checkbox"] {
+      appearance: none;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      display: inline-grid;
+      place-content: center;
+      cursor: pointer;
+      outline: none;
+    }
+
+    input[type="checkbox"]::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      transform: scale(0);
+      transition: 100ms transform ease-in-out;
+      background-color: var(--accent-color);
+      border-radius: 1px;
+    }
+
+    input[type="checkbox"]:checked::before {
+      transform: scale(1);
+    }
+
+    input[type="checkbox"]:focus {
+      border-color: var(--accent-color);
+    }
+
+    .form-help {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.3;
+    }
+
+    /* Tables */
+    .table-container {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-app);
+      border-radius: 3px;
+      max-height: 250px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--bg-panel);
+      color: var(--text-secondary);
+      font-weight: 600;
+      padding: 8px 10px;
+      position: sticky;
+      top: 0;
+      border-bottom: 1px solid var(--border-color);
+      z-index: 10;
+    }
+
+    td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .warning-row {
+      color: var(--warning-color);
+    }
+
+    .table-input {
+      background-color: var(--bg-input);
+      color: var(--text-primary);
+      border: 1px solid transparent;
+      border-radius: 2px;
+      padding: 4px 6px;
+      font-size: 11px;
+      width: 100%;
+      outline: none;
+    }
+
+    .table-input:focus {
+      border-color: var(--accent-color);
+    }
+
+    /* Code Preview block */
+    .preview-block {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 3px;
+      padding: 10px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 11px;
+      color: var(--success-color);
+      white-space: pre;
+      overflow-x: auto;
+      max-height: 120px;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 3px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      outline: none;
+      transition: all 0.1s ease;
+    }
+
+    .btn-primary {
+      background-color: var(--accent-color);
+      color: #000;
+      border-color: var(--accent-color);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-color-hover);
+    }
+
+    .btn-primary:active {
+      background-color: var(--accent-color-active);
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-control);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:hover {
+      background-color: #454545;
+    }
+
+    .btn-secondary:active {
+      background-color: #303030;
+    }
+
+    /* Feedback message */
+    .toast {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.85);
+      border: 1px solid var(--accent-color);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Mixtape Cue Sheet Generator</h1>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span>Ableton Connected</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Screen 1: Settings Screen -->
+    <div id="view-settings" class="view-card">
+
+      <div class="form-group" id="filename-group">
+        <label for="filename-input">Mixtape Audio Filename</label>
+        <input type="text" id="filename-input" value="mixtape.wav" placeholder="mixtape.wav">
+        <div class="form-help">Enter the filename of your exported audio mix (referenced inside the cue sheet).</div>
+      </div>
+
+      <div class="form-group">
+        <label for="output-filename-input">Output Cue Sheet Filename</label>
+        <input type="text" id="output-filename-input" value="mixtape.txt" placeholder="mixtape.txt">
+        <div class="form-help">Enter the filename for the generated cue sheet text file (will automatically be saved as .txt).</div>
+      </div>
+
+      <div class="form-group">
+        <label for="threshold-input">Track Clip Filter Threshold</label>
+        <input type="text" id="threshold-input" value="1:30" placeholder="1:30">
+        <div class="form-help">Clips shorter than this threshold (e.g. `1:30` or `90` seconds) will be ignored to filter out transition sweeps, drums, or riser samples.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="transition-select">Transition Cue Position</label>
+        <select id="transition-select">
+          <option value="start">Start of Overlap / Transition (Incoming clip starts playing)</option>
+          <option value="end">End of Overlap / Transition (Outgoing clip stops playing)</option>
+        </select>
+        <div class="form-help">Select if track cue indices trigger when the new song first starts mixing in, or when the previous song has finished fading out.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-group" for="merge-contiguous-checkbox">
+          <input type="checkbox" id="merge-contiguous-checkbox" checked onchange="updateInfoSummary()">
+          <span>Merge contiguous clips on the same track / lane</span>
+        </label>
+        <div class="form-help">If checked, clips that touch side-by-side on the same track are merged into a single song segment before checking the duration threshold.</div>
+      </div>
+
+      <div class="form-group" style="margin-top: 10px;">
+        <div class="form-help" id="info-text">Detecting arrangement clips...</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="cancelDialog()">Cancel</button>
+        <button class="btn-primary" onclick="proceedToPreview()">Next: Preview Tracks</button>
+      </div>
+    </div>
+
+    <!-- Screen 2: Track Preview Screen -->
+    <div id="view-preview" class="view-card hidden">
+      <div class="form-help">
+        Verify and edit the track details generated directly from arrangement clips (sorted chronologically by start time).
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 5%">#</th>
+              <th style="width: 20%">Start Time</th>
+              <th style="width: 35%">Lane & Source File</th>
+              <th style="width: 20%">Song Title</th>
+              <th style="width: 20%">Artist / Performer</th>
+            </tr>
+          </thead>
+          <tbody id="track-table-body">
+            <!-- Dynamic Rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <label>Cue Sheet Preview</label>
+      <div class="preview-block" id="cue-preview">
+        <!-- Live formatted preview -->
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="backToSettings()">Back</button>
+        <button class="btn-secondary" onclick="copyCueToClipboard()">Copy to Clipboard</button>
+        <button class="btn-primary" onclick="exportCueSheet()">Save to Desktop</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast" class="toast">Copied to clipboard!</div>
+
+  <script>
+    // System message handlers
+    const isWebKit = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.live;
+    const isWebView2 = window.chrome && window.chrome.webview;
+
+    function doSendMessage(message) {
+      if (isWebKit) {
+        window.webkit.messageHandlers.live.postMessage(message);
+      } else if (isWebView2) {
+        window.chrome.webview.postMessage(message);
+      }
+    }
+
+    function closeWithResult(result) {
+      doSendMessage({ method: "close_and_send", params: [JSON.stringify(result)] });
+    }
+
+    function cancelDialog() {
+      closeWithResult({ action: "cancel" });
+    }
+
+    // Injected projectData fallback if opened directly
+    if (typeof projectData === "undefined") {
+      window.projectData = {
+        tempo: 120,
+        clips: [
+          { name: "Daft Punk - One More Time (Part 1)", startTime: 0, endTime: 120, duration: 120, trackName: "Vocal Lane", isAudio: true, fileName: "01-One-More-Time.wav" },
+          { name: "Daft Punk - One More Time (Part 2)", startTime: 120, endTime: 240, duration: 120, trackName: "Vocal Lane", isAudio: true, fileName: "01-One-More-Time.wav" },
+          { name: "Justice - D.A.N.C.E. (Extended Mix)", startTime: 180, endTime: 360, duration: 180, trackName: "Main Song Lane", isAudio: true, fileName: "02-D.A.N.C.E.wav" },
+          { name: "Riser Sample.wav", startTime: 100, endTime: 104, duration: 4, trackName: "FX Lane", isAudio: true, fileName: "riser.wav" }
+        ]
+      };
+    }
+
+    // Local state
+    let matchedTracksList = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      updateInfoSummary();
+      
+      // Auto-validate settings inputs on input
+      document.getElementById("threshold-input").addEventListener("input", updateInfoSummary);
+
+      // Auto-sync output filename with audio filename input
+      document.getElementById("filename-input").addEventListener("input", () => {
+        const wavFilename = document.getElementById("filename-input").value.trim() || "mixtape.wav";
+        document.getElementById("output-filename-input").value = wavFilename.replace(/\.[a-zA-Z0-9]+$/, "") + ".txt";
+      });
+    });
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.innerText = message;
+      toast.classList.add("show");
+      setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2000);
+    }
+
+    function parseThreshold(input) {
+      const parts = input.split(":");
+      if (parts.length === 2) {
+        const mins = parseFloat(parts[0] || "0");
+        const secs = parseFloat(parts[1] || "0");
+        return mins * 60 + secs;
+      }
+      const val = parseFloat(input);
+      return isNaN(val) ? 0 : val;
+    }
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      const frames = Math.floor((seconds - Math.floor(seconds)) * 75);
+      
+      const mm = String(mins).padStart(2, '0');
+      const ss = String(secs).padStart(2, '0');
+      const ff = String(frames).padStart(2, '0');
+      
+      return `${mm}:${ss}:${ff}`;
+    }
+
+    // Helper to merge clips that touch on the same track
+    function mergeClipsList(clips, tempo) {
+      const mergeEnabled = document.getElementById("merge-contiguous-checkbox").checked;
+      if (!mergeEnabled) return clips;
+
+      // Group clips by trackName
+      const groups = {};
+      clips.forEach(clip => {
+        const tName = clip.trackName || "Unknown Lane";
+        if (!groups[tName]) {
+          groups[tName] = [];
+        }
+        groups[tName].push(clip);
+      });
+
+      const allMerged = [];
+
+      for (const tName in groups) {
+        const trackClips = groups[tName];
+        // Sort clips on this track chronologically
+        trackClips.sort((a, b) => a.startTime - b.startTime);
+
+        if (trackClips.length === 0) continue;
+
+        let current = { ...trackClips[0] };
+
+        for (let i = 1; i < trackClips.length; i++) {
+          const next = trackClips[i];
+          // Check if contiguous (gap <= 0.1 beats)
+          if (Math.abs(next.startTime - current.endTime) <= 0.1) {
+            // Extend current clip's range
+            current.endTime = next.endTime;
+            current.duration = current.endTime - current.startTime;
+          } else {
+            allMerged.push(current);
+            current = { ...next };
+          }
+        }
+        allMerged.push(current);
+      }
+
+      return allMerged;
+    }
+
+    function updateInfoSummary() {
+      const thresholdVal = document.getElementById("threshold-input").value;
+      const thresholdSecs = parseThreshold(thresholdVal);
+      const tempo = projectData.tempo;
+      
+      // Perform contiguous merging first if enabled
+      const processedClips = mergeClipsList(projectData.clips, tempo);
+      
+      const totalCount = processedClips.length;
+      const longClips = processedClips.filter(clip => {
+        const durationSec = (clip.duration / tempo) * 60;
+        return durationSec >= thresholdSecs;
+      });
+
+      document.getElementById("info-text").innerText = 
+        `Found ${projectData.clips.length} raw clips. After track processing: ` +
+        `${totalCount} segments, with ${longClips.length} qualifying as songs.`;
+    }
+
+    function calculateMatchedTracks() {
+      const thresholdVal = document.getElementById("threshold-input").value;
+      const thresholdSecs = parseThreshold(thresholdVal);
+      const transitionMode = document.getElementById("transition-select").value;
+      const tempo = projectData.tempo;
+      
+      // 1. Process clips by merging contiguous blocks if enabled
+      const processedClips = mergeClipsList(projectData.clips, tempo);
+
+      // 2. Filter by duration threshold
+      const validClips = processedClips.filter(clip => {
+        const durationSec = (clip.duration / tempo) * 60;
+        return durationSec >= thresholdSecs;
+      });
+
+      // 3. Sort chronologically by arrangement start time (beats) ascending
+      validClips.sort((a, b) => a.startTime - b.startTime);
+      
+      const tracks = [];
+      for (let i = 0; i < validClips.length; i++) {
+        const clip = validClips[i];
+        
+        let startBeats = clip.startTime;
+
+        // If transition alignment is set to END of overlap:
+        if (transitionMode === "end" && i > 0) {
+          // Look for any clip playing on a different track/lane that starts BEFORE this clip, but ends AFTER this clip starts
+          let maxEndTime = startBeats;
+          for (let j = 0; j < validClips.length; j++) {
+            const other = validClips[j];
+            if (other !== clip && other.trackName !== clip.trackName && other.startTime < clip.startTime && other.endTime > clip.startTime) {
+              if (other.endTime > maxEndTime) {
+                maxEndTime = other.endTime;
+              }
+            }
+          }
+          // Cap the adjusted cue point at the current song's end time
+          startBeats = Math.min(maxEndTime, clip.endTime);
+        }
+
+        const clipTimeSecs = (startBeats / tempo) * 60;
+        
+        let artist = "Various";
+        let title = clip.name;
+
+        // Clean up suffix numbers commonly appended to contiguous clips e.g. "Song (Part 1)" or "(Part 2)"
+        title = title.replace(/\s*\(Part\s*\d+\)/i, "").replace(/\s*pt\.?\s*\d+/i, "");
+
+        const nameParts = title.split(" - ");
+        if (nameParts.length >= 2) {
+          artist = nameParts[0].trim();
+          title = nameParts.slice(1).join(" - ").trim();
+        } else {
+          artist = "Various";
+          title = title.trim();
+        }
+
+        // Clean up title extension suffixes if present (e.g. .wav)
+        title = title.replace(/\.[a-zA-Z0-9]+$/, "");
+
+        tracks.push({
+          trackNumber: String(i + 1).padStart(2, "0"),
+          clipName: clip.name,
+          timeSeconds: clipTimeSecs,
+          timeFormatted: formatTime(clipTimeSecs),
+          artist: artist,
+          title: title,
+          trackName: clip.trackName || "Unknown Lane",
+          fileName: clip.fileName || "None"
+        });
+      }
+      
+      matchedTracksList = tracks;
+    }
+
+    function buildTable() {
+      const tbody = document.getElementById("track-table-body");
+      tbody.innerHTML = "";
+
+      matchedTracksList.forEach((track, index) => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${track.trackNumber}</td>
+          <td>
+            <strong>${track.timeFormatted}</strong>
+            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">
+              ${Math.round(track.timeSeconds)}s
+            </div>
+          </td>
+          <td>
+            <div style="font-weight: 500; color: var(--accent-color);">${escapeHtml(track.trackName)}</div>
+            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px; font-family: monospace;">
+              File: ${escapeHtml(track.fileName)}
+            </div>
+          </td>
+          <td>
+            <input type="text" class="table-input" value="${escapeHtml(track.title)}" 
+              oninput="updateTrackTitle(${index}, this.value)">
+          </td>
+          <td>
+            <input type="text" class="table-input" value="${escapeHtml(track.artist)}" 
+              oninput="updateTrackArtist(${index}, this.value)">
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function updateTrackTitle(index, val) {
+      matchedTracksList[index].title = val;
+      updateCueTextPreview();
+    }
+
+    // Function to update artist
+    function updateTrackArtist(index, val) {
+      matchedTracksList[index].artist = val;
+      updateCueTextPreview();
+    }
+
+    function generateCueString() {
+      const filename = document.getElementById("filename-input").value || "mixtape.wav";
+      
+      let cue = `PERFORMER "Various Artists"\n`;
+      cue += `TITLE "Ableton Arrangement Mixtape"\n`;
+      
+      cue += `FILE "${filename}" WAVE\n`;
+      matchedTracksList.forEach(track => {
+        cue += `  TRACK ${track.trackNumber} AUDIO\n`;
+        cue += `    TITLE "${track.title.replace(/"/g, '\\"')}"\n`;
+        cue += `    PERFORMER "${track.artist.replace(/"/g, '\\"')}"\n`;
+        cue += `    INDEX 01 ${track.timeFormatted}\n`;
+        cue += `    REM FILE "${track.fileName.replace(/"/g, '\\"')}"\n`;
+        cue += `    REM LANE "${track.trackName.replace(/"/g, '\\"')}"\n`;
+      });
+      
+      return cue;
+    }
+
+    function updateCueTextPreview() {
+      document.getElementById("cue-preview").innerText = generateCueString();
+    }
+
+    function proceedToPreview() {
+      calculateMatchedTracks();
+      buildTable();
+      updateCueTextPreview();
+      
+      document.getElementById("view-settings").classList.add("hidden");
+      document.getElementById("view-preview").classList.remove("hidden");
+    }
+
+    function backToSettings() {
+      document.getElementById("view-preview").classList.add("hidden");
+      document.getElementById("view-settings").classList.remove("hidden");
+    }
+
+    function copyCueToClipboard() {
+      const text = generateCueString();
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("Cue sheet copied to clipboard!");
+      }).catch(err => {
+        showToast("Error copying to clipboard: " + err);
+      });
+    }
+
+    function exportCueSheet() {
+      const cueText = generateCueString();
+      let cueFilename = document.getElementById("output-filename-input").value.trim() || "mixtape.txt";
+      
+      // Ensure the output file always has a .txt extension
+      if (!cueFilename.toLowerCase().endsWith(".txt")) {
+        const lastDot = cueFilename.lastIndexOf(".");
+        if (lastDot > 0) {
+          cueFilename = cueFilename.substring(0, lastDot) + ".txt";
+        } else {
+          cueFilename += ".txt";
+        }
+      }
+
+      closeWithResult({
+        action: "save",
+        filename: cueFilename,
+        content: cueText
+      });
+    }
+  </script>
+</body>
+</html>
